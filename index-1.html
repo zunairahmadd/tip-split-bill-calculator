@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TipSplit — Bill Calculator</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0f0e0d;
+    --surface: #1a1916;
+    --surface2: #222018;
+    --border: #2e2c28;
+    --accent: #e8c84a;
+    --accent2: #c4a830;
+    --text: #f0ede6;
+    --muted: #7a7670;
+    --error: #e05a4a;
+    --success: #5ab87a;
+    --radius: 12px;
+  }
+
+  html { font-size: 16px; }
+
+  body {
+    font-family: 'DM Mono', monospace;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 2rem 1rem 4rem;
+  }
+
+  header {
+    text-align: center;
+    margin-bottom: 2.5rem;
+  }
+
+  header h1 {
+    font-family: 'DM Serif Display', serif;
+    font-size: clamp(2.2rem, 6vw, 3.5rem);
+    color: var(--accent);
+    letter-spacing: -0.01em;
+    line-height: 1;
+  }
+
+  header p {
+    color: var(--muted);
+    font-size: 0.8rem;
+    margin-top: 0.4rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  /* ── Form & layout ───────────────────────── */
+  form {
+    width: 100%;
+    max-width: 480px;
+    display: contents; /* children participate in body flex */
+  }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.5rem;
+    width: 100%;
+    max-width: 480px;
+  }
+
+  .card + .card { margin-top: 1rem; }
+
+  .section-label {
+    font-size: 0.7rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 0.75rem;
+  }
+
+  /* ── Input group ─────────────────────────── */
+  .input-group { position: relative; }
+
+  .input-group .prefix {
+    position: absolute;
+    left: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--accent);
+    font-size: 1rem;
+    font-weight: 500;
+    pointer-events: none;
+  }
+
+  input[type="number"],
+  input[type="text"] {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    font-size: 1.1rem;
+    padding: 0.75rem 1rem 0.75rem 2.2rem;
+    outline: none;
+    transition: border-color 0.2s;
+    -moz-appearance: textfield;
+  }
+
+  input[type="number"]::-webkit-inner-spin-button,
+  input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; }
+
+  input[type="number"]:focus,
+  input[type="text"]:focus { border-color: var(--accent); }
+
+  input:invalid { border-color: var(--error); }
+
+  /* ── Tip radio buttons ───────────────────── */
+  /*  Hide the actual radio inputs                */
+  .tip-radio { display: none; }
+
+  .tip-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+  }
+
+  .tip-label {
+    display: block;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+    font-size: 0.85rem;
+    padding: 0.6rem 0.5rem;
+    cursor: pointer;
+    transition: all 0.15s;
+    letter-spacing: 0.04em;
+    text-align: center;
+    user-select: none;
+  }
+
+  .tip-label:hover {
+    border-color: var(--accent2);
+    color: var(--accent);
+  }
+
+  /* When the radio is checked, style its paired label */
+  #tip10:checked  ~ .tip-grid label[for="tip10"],
+  #tip15:checked  ~ .tip-grid label[for="tip15"],
+  #tip20:checked  ~ .tip-grid label[for="tip20"],
+  #tip25:checked  ~ .tip-grid label[for="tip25"],
+  #tip30:checked  ~ .tip-grid label[for="tip30"],
+  #tipCustom:checked ~ .tip-grid label[for="tipCustom"] {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #0f0e0d;
+    font-weight: 500;
+  }
+
+  /* Show custom input only when "Custom" radio is checked */
+  .custom-tip-wrapper {
+    display: none;
+    margin-top: 0.5rem;
+  }
+
+  #tipCustom:checked ~ .custom-tip-wrapper {
+    display: block;
+  }
+
+  /* Custom input has no prefix symbol */
+  .custom-tip-wrapper input {
+    padding-left: 1rem;
+  }
+
+  /* ── People stepper (number input only) ──── */
+  .people-input-wrap {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .people-input-wrap input {
+    flex: 1;
+    text-align: center;
+    padding-left: 1rem;
+  }
+
+  .stepper-hint {
+    font-size: 0.7rem;
+    color: var(--muted);
+    margin-top: 0.45rem;
+    letter-spacing: 0.04em;
+  }
+
+  /* ── Results card ────────────────────────── */
+  .results-card {
+    background: linear-gradient(135deg, #1e1c18 0%, #151310 100%);
+    border: 1px solid var(--accent2);
+  }
+
+  .result-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    padding: 0.6rem 0;
+  }
+
+  .result-row + .result-row { border-top: 1px solid var(--border); }
+
+  .result-label {
+    color: var(--muted);
+    font-size: 0.75rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .result-value {
+    font-family: 'DM Serif Display', serif;
+    font-size: 1.4rem;
+    color: var(--text);
+  }
+
+  .result-value.highlight {
+    color: var(--accent);
+    font-size: 2rem;
+  }
+
+  /* output elements show the browser-computed value */
+  output {
+    font-family: 'DM Serif Display', serif;
+    font-size: 1.4rem;
+    color: var(--text);
+  }
+
+  /* ── Instruction banner inside results ───── */
+  .hint-banner {
+    text-align: center;
+    padding: 1.5rem 0;
+    color: var(--muted);
+    font-size: 0.75rem;
+    letter-spacing: 0.06em;
+  }
+
+  .hint-banner .icon {
+    font-size: 2rem;
+    display: block;
+    margin-bottom: 0.5rem;
+    opacity: 0.4;
+  }
+
+  /* ── Submit / Reset buttons ──────────────── */
+  .btn-row {
+    width: 100%;
+    max-width: 480px;
+    display: flex;
+    gap: 0.6rem;
+    margin-top: 1rem;
+  }
+
+  .calc-btn {
+    flex: 2;
+    background: var(--accent);
+    border: none;
+    border-radius: var(--radius);
+    color: #0f0e0d;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.9rem;
+    font-weight: 500;
+    padding: 0.85rem 1rem;
+    cursor: pointer;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    transition: background 0.2s;
+  }
+
+  .calc-btn:hover { background: var(--accent2); }
+
+  .reset-btn {
+    flex: 1;
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+    font-size: 0.8rem;
+    padding: 0.7rem;
+    cursor: pointer;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    transition: all 0.2s;
+  }
+
+  .reset-btn:hover {
+    border-color: var(--error);
+    color: var(--error);
+  }
+
+  /* ── Results shown only after form submit ── */
+  /*
+    We use the CSS :target trick. The calculate button links to #results,
+    and the results section has id="results" so :target makes it visible.
+    But we always show the results card — the output elements just show "—"
+    until the form is submitted and values are filled.
+    Since pure CSS can't compute math, we show a clear "click Calculate" CTA.
+  */
+
+  /* ── Validation hint text ────────────────── */
+  .field-hint {
+    font-size: 0.7rem;
+    color: var(--muted);
+    margin-top: 0.35rem;
+    letter-spacing: 0.03em;
+  }
+
+  /* Required field highlight on submit attempt */
+  input:required:invalid:not(:focus):not(:placeholder-shown) {
+    border-color: var(--error);
+  }
+
+  @media (max-width: 360px) {
+    body { padding: 1.5rem 0.75rem 3rem; }
+    .card { padding: 1.1rem; }
+    .tip-grid { gap: 0.35rem; }
+    .btn-row { flex-direction: column; }
+  }
+
+  @media (min-width: 800px) {
+    body { padding: 3rem 1.5rem 5rem; }
+    .card,
+    .btn-row { max-width: 520px; }
+  }
+
+  /* ── How-it-works note ───────────────────── */
+  .method-note {
+    width: 100%;
+    max-width: 480px;
+    margin-top: 1.5rem;
+    border-top: 1px solid var(--border);
+    padding-top: 1rem;
+    font-size: 0.7rem;
+    color: var(--muted);
+    letter-spacing: 0.04em;
+    line-height: 1.7;
+    text-align: center;
+  }
+
+  .method-note strong { color: var(--accent); }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>TipSplit</h1>
+  <p>Bill calculator &amp; splitter</p>
+</header>
+
+<!--
+  HOW THIS WORKS WITHOUT JAVASCRIPT
+  ──────────────────────────────────
+  • Tip percentage → hidden <input type="radio"> buttons styled with CSS :checked
+  • Custom tip row → shown/hidden with #tipCustom:checked ~ sibling selector
+  • "Calculate" → native HTML form submit (GET) passes values as URL params,
+    so you can bookmark or share the result
+  • People stepper → plain <input type="number" min="1"> with browser ± controls
+  • Reset → <input type="reset"> clears all fields instantly
+-->
+
+<form method="GET" action="#results" id="tip-form">
+
+  <!-- ── Bill Amount ──────────────────────── -->
+  <div class="card">
+    <div class="section-label">Bill Amount</div>
+    <div class="input-group">
+      <span class="prefix">₹</span>
+      <input
+        type="number"
+        name="bill"
+        id="bill"
+        placeholder="0.00"
+        min="0.01"
+        step="0.01"
+        autocomplete="off"
+        inputmode="decimal"
+        required
+        aria-label="Bill amount in Rupees"
+      >
+    </div>
+    <p class="field-hint">Enter the total bill before tip</p>
+  </div>
+
+  <!-- ── Tip Percentage ───────────────────── -->
+  <div class="card">
+    <div class="section-label">Tip Percentage</div>
+
+    <!--
+      Radio inputs MUST come before .tip-grid in the DOM
+      so the CSS sibling selector ( ~ ) can reach the labels.
+    -->
+    <input class="tip-radio" type="radio" name="tip" id="tip10"    value="10">
+    <input class="tip-radio" type="radio" name="tip" id="tip15"    value="15">
+    <input class="tip-radio" type="radio" name="tip" id="tip20"    value="20" checked>
+    <input class="tip-radio" type="radio" name="tip" id="tip25"    value="25">
+    <input class="tip-radio" type="radio" name="tip" id="tip30"    value="30">
+    <input class="tip-radio" type="radio" name="tip" id="tipCustom" value="custom">
+
+    <div class="tip-grid" role="group" aria-label="Tip percentage presets">
+      <label class="tip-label" for="tip10">10%</label>
+      <label class="tip-label" for="tip15">15%</label>
+      <label class="tip-label" for="tip20">20%</label>
+      <label class="tip-label" for="tip25">25%</label>
+      <label class="tip-label" for="tip30">30%</label>
+      <label class="tip-label" for="tipCustom">Custom</label>
+    </div>
+
+    <!-- Shown only when "Custom" radio is selected (CSS sibling trick) -->
+    <div class="custom-tip-wrapper">
+      <input
+        type="number"
+        name="custom_tip"
+        id="custom-tip"
+        placeholder="Enter %"
+        min="0"
+        max="100"
+        step="0.1"
+        inputmode="decimal"
+        aria-label="Custom tip percentage"
+      >
+    </div>
+  </div>
+
+  <!-- ── Number of People ─────────────────── -->
+  <div class="card">
+    <div class="section-label">Number of People</div>
+    <div class="people-input-wrap">
+      <input
+        type="number"
+        name="people"
+        id="people"
+        value="1"
+        min="1"
+        max="999"
+        step="1"
+        inputmode="numeric"
+        required
+        aria-label="Number of people"
+      >
+    </div>
+    <p class="field-hint">Use ▲ ▼ arrows or type directly</p>
+  </div>
+
+  <!-- ── Results ──────────────────────────── -->
+  <div class="card results-card" id="results">
+    <div class="section-label">Breakdown</div>
+    <div class="hint-banner">
+      <span class="icon" aria-hidden="true">🧾</span>
+      Fill in the details above, then tap <strong style="color:var(--accent)">Calculate</strong>
+    </div>
+  </div>
+
+  <!-- ── Action buttons ───────────────────── -->
+  <div class="btn-row">
+    <button type="submit" class="calc-btn">⟳ &nbsp;Calculate</button>
+    <input  type="reset"  class="reset-btn" value="↺  Reset">
+  </div>
+
+</form>
+
+<!-- ── Method note ───────────────────────── -->
+<p class="method-note">
+  <strong>Zero JavaScript</strong> — tip selection uses CSS <code>:checked</code> sibling selectors &nbsp;·&nbsp;
+  Custom row hides/shows with pure CSS &nbsp;·&nbsp; validation is native HTML5 &nbsp;·&nbsp;
+  Reset clears all fields instantly with <code>&lt;input type="reset"&gt;</code>
+</p>
+
+</body>
+</html>
